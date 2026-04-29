@@ -111,6 +111,7 @@ import '@mdi/font/css/materialdesignicons.css'
 
 .icon {
   font-size: 56px;
+  color: #fff;
   margin-bottom: 16px;
   animation: iconShake 2s ease-in-out infinite;
 }

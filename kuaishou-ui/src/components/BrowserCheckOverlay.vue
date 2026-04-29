@@ -102,28 +102,11 @@
   z-index: 1;
   padding: 48px 64px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 0 20px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   text-align: center;
-  animation: cardPulse 3s ease-in-out infinite;
-}
-
-@keyframes cardPulse {
-  0%, 100% {
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      inset 0 0 20px rgba(255, 255, 255, 0.05);
-  }
-  50% {
-    box-shadow:
-      0 12px 48px rgba(0, 0, 0, 0.4),
-      inset 0 0 30px rgba(255, 255, 255, 0.1);
-  }
 }
 
 .icon {
@@ -146,6 +129,5 @@
   font-size: 22px;
   font-weight: 500;
   letter-spacing: 2px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 </style>

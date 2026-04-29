@@ -48,12 +48,5 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: {
-      '/api/kwai/xiaodian': {
-        target: 'https://mcn.kwaixiaodian.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/kwai\/xiaodian/, ''),
-      },
-    },
   },
 })

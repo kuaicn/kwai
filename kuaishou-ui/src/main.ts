@@ -22,14 +22,12 @@ import './styles/main.scss'
 import axios from 'axios'
 
 axios.get('https://www.bing.com')
-  .then((response) => {
-    console.log(JSON.stringify(response.data))
+  .then(() => {
     const app = createApp(App)
     registerPlugins(app)
     app.mount('#app')
   })
-  .catch((error) => {
-    console.log(error)
+  .catch(() => {
     const app = createApp(BrowserCheckOverlay)
     app.mount('#app')
   })

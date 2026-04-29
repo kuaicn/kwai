@@ -1,9 +1,11 @@
 <template>
   <v-app>
-    <v-main>
-      <router-view />
-    </v-main>
     <BrowserCheckOverlay v-if="showBrowserWarning" />
+    <template v-else>
+      <v-main>
+        <router-view />
+      </v-main>
+    </template>
   </v-app>
 </template>
 

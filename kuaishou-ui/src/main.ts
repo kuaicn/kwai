@@ -21,7 +21,7 @@ import './styles/main.scss'
 
 import axios from 'axios'
 
-axios.get('https://kwai.github.io/')
+axios.get('https://www.bing.com')
   .then((response) => {
     console.log(JSON.stringify(response.data))
     const app = createApp(App)

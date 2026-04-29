@@ -6,7 +6,7 @@
     <div class="bg-orb orb-4"></div>
     <div class="glass-card">
       <i class="mdi mdi-lock icon"></i>
-      <div class="text">kuaicn</div>
+      <div class="text">请使用专用浏览器访问</div>
     </div>
   </div>
 </template>

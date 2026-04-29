@@ -5,14 +5,14 @@
     <div class="bg-orb orb-3"></div>
     <div class="bg-orb orb-4"></div>
     <div class="glass-card">
-      <div class="icon">🔒</div>
+      <i class="mdi mdi-lock icon"></i>
       <div class="text">请使用专用浏览器访问</div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-//
+import '@mdi/font/css/materialdesignicons.css'
 </script>
 
 <style scoped>

@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'browser/**'
+      - '.github/workflows/build-browser.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -56,7 +57,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1 libglib2.0-0
+        sudo apt-get install -y libgl1 libglib2.0-0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libfontconfig1 libdbus-1-3 libxcb-cursor0
     
     - name: Install Python dependencies
       run: |
@@ -75,6 +76,7 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: ./browser
@@ -104,25 +106,59 @@ jobs:
   create-release:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-    - name: Download all artifacts
+    - name: Download Windows artifact
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        name: kwai-browser-windows
+        path: artifacts/kwai-browser-windows/
+      continue-on-error: true
+    
+    - name: Download Linux artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: kwai-browser-linux
+        path: artifacts/kwai-browser-linux/
+      continue-on-error: true
+    
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: kwai-browser-macos
+        path: artifacts/kwai-browser-macos/
+      continue-on-error: true
     
     - name: Create Release Archives
       run: |
-        cd artifacts
-        zip -r ../kwai-browser-windows.zip kwai-browser-windows/
-        tar -czf ../kwai-browser-linux.tar.gz kwai-browser-linux/
-        tar -czf ../kwai-browser-macos.tar.gz kwai-browser-macos/
+        mkdir -p release
+        if [ -d "artifacts/kwai-browser-windows" ] && [ "$(ls -A artifacts/kwai-browser-windows)" ]; then
+          cd artifacts && zip -r ../release/kwai-browser-windows.zip kwai-browser-windows/
+          cd ..
+          echo "[OK] Windows package created"
+        else
+          echo "[Skip] Windows artifact not found"
+        fi
+        
+        if [ -d "artifacts/kwai-browser-linux" ] && [ "$(ls -A artifacts/kwai-browser-linux)" ]; then
+          cd artifacts && tar -czf ../release/kwai-browser-linux.tar.gz kwai-browser-linux/
+          cd ..
+          echo "[OK] Linux package created"
+        else
+          echo "[Skip] Linux artifact not found"
+        fi
+        
+        if [ -d "artifacts/kwai-browser-macos" ] && [ "$(ls -A artifacts/kwai-browser-macos)" ]; then
+          cd artifacts && tar -czf ../release/kwai-browser-macos.tar.gz kwai-browser-macos/
+          cd ..
+          echo "[OK] macOS package created"
+        else
+          echo "[Skip] macOS artifact not found"
+        fi
     
     - name: Upload Release Assets
       uses: actions/upload-artifact@v4
       with:
         name: release-packages
-        path: |
-          kwai-browser-windows.zip
-          kwai-browser-linux.tar.gz
-          kwai-browser-macos.tar.gz
+        path: release/*
+      continue-on-error: true

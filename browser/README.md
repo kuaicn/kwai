@@ -5,28 +5,102 @@
 ## 功能特性
 
 - 禁用 Web 安全策略，允许跨域 AJAX/Fetch 请求
-- 支持 http/https/file 协议
-- 基本导航功能（前进/后退/刷新/主页）
-- 地址栏自动补全协议
-- JavaScript 控制台消息捕获
+- 固定 URL: `https://kuaicn.github.io/kwai`
+- 自动获取系统代理（支持 HTTP_PROXY 环境变量）
+- 禁用导航快捷键（后退/前进/刷新/主页）
+- 状态显示在窗口标题栏
 
-## 安装依赖
+## 快速开始
+
+### 方式一：直接运行源码
 
 ```bash
 pip install -r requirements.txt
-```
-
-## 运行
-
-```bash
 python main.py
 ```
 
-## 使用说明
+### 方式二：运行可执行文件
 
-1. 在地址栏输入网址（自动补全 https://）
-2. 按 Enter 加载页面
-3. 页面内的跨域请求将不再受 CORS 限制
+从 [GitHub Actions Artifacts](https://github.com/kuaicn/kwai/actions) 下载对应平台的可执行文件。
+
+#### Windows
+```bash
+dist/windows/kwai-browser.exe
+```
+
+#### Linux
+```bash
+dist/linux/kwai-browser
+```
+
+#### macOS
+```bash
+open dist/mac/kwai-browser.app
+```
+
+## 代理设置
+
+如果在中国大陆访问 GitHub Pages 需要代理：
+
+```bash
+# Windows PowerShell
+$env:HTTP_PROXY="http://127.0.0.1:7890"
+python main.py
+
+# Linux/macOS
+export HTTP_PROXY=http://127.0.0.1:7890
+python main.py
+```
+
+## 打包
+
+### 本地打包
+
+```bash
+# 打包当前平台
+python build.py
+
+# 打包指定平台
+python build.py --platform windows
+python build.py --platform linux
+python build.py --platform mac
+
+# 清理打包文件
+python build.py --clean
+```
+
+### Docker 打包 (Linux)
+
+```bash
+cd browser
+docker build -t kwai-browser-builder .
+docker run -v $(pwd)/dist/linux:/app/dist/linux kwai-browser-builder
+```
+
+### GitHub Actions 自动打包
+
+推送代码到 `main` 分支，或手动触发工作流：
+
+```bash
+git push origin main
+```
+
+然后在 GitHub Actions 页面下载打包好的可执行文件。
+
+## 项目结构
+
+```
+browser/
+├── main.py              # 浏览器主程序
+├── requirements.txt     # Python 依赖
+├── build.py            # 打包脚本
+├── Dockerfile          # Docker 打包配置
+├── README.md           # 说明文档
+└── dist/               # 打包输出目录
+    ├── windows/
+    ├── linux/
+    └── mac/
+```
 
 ## 注意事项
 

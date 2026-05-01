@@ -35,8 +35,8 @@ class ProxyAxios {
   ) {
     const { originalHeaders, proxyOptions, ...restConfig } = config || {}
 
-    const headers: Record<string, string> = {
-      ...restConfig.headers,
+    const headers: Record<string, any> = {
+      ...(restConfig.headers as Record<string, any>),
       'api-u': url,
     }
 

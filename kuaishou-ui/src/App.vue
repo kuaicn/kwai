@@ -6,7 +6,6 @@
         <v-tab to="/mcn">电商MCN</v-tab>
         <v-tab to="/guild">娱乐公会</v-tab>
         <v-tab to="/agency">公会机构</v-tab>
-        <v-tab to="/service">电商服务商</v-tab>
         <v-tab to="/live-app">直播（App）</v-tab>
         <v-tab to="/live-web">直播（Web）</v-tab>
       </v-tabs>

@@ -14,7 +14,6 @@ const router = createRouter({
     { path: '/mcn', component: () => import('@/pages/mcn.vue') },
     { path: '/guild', component: () => import('@/pages/guild.vue') },
     { path: '/agency', component: () => import('@/pages/agency.vue') },
-    { path: '/service', component: () => import('@/pages/service.vue') },
     { path: '/live-app', component: () => import('@/pages/live-app.vue') },
     { path: '/live-web', component: () => import('@/pages/live-web.vue') },
   ],

@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 
 function serializeHeaders(headers: Record<string, string>): string {
   return Object.entries(headers)
-    .map(([key, value]) => `${key}=${value}`)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join(', ')
 }
 

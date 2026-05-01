@@ -162,8 +162,8 @@ export async function* qrLogin(
   const credentials: QRLoginCredentials = {
     ssecurity: callbackRes.ssecurity,
     passToken: callbackRes.passToken,
-    apiSt: callbackRes['kuaishou.web.cp.api_st'],
-    apiAt: callbackRes['kuaishou.web.cp.api.at'],
+    apiSt: callbackRes[`${sid}_st`],
+    apiAt: callbackRes[`${sid}.at`],
     bUserId: callbackRes.bUserId,
     userId: callbackRes.userId,
     sid: callbackRes.sid,

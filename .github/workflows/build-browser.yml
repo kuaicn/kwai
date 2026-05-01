@@ -40,6 +40,7 @@ jobs:
       with:
         name: kwai-browser-windows
         path: browser/dist/windows/
+        if-no-files-found: warn
 
   build-linux:
     runs-on: ubuntu-latest
@@ -73,6 +74,7 @@ jobs:
       with:
         name: kwai-browser-linux
         path: browser/dist/linux/
+        if-no-files-found: warn
 
   build-macos:
     runs-on: macos-latest
@@ -102,42 +104,36 @@ jobs:
       with:
         name: kwai-browser-macos
         path: browser/dist/mac/
+        if-no-files-found: warn
 
   create-release:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-    - name: Download Windows artifact
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        name: kwai-browser-windows
-        path: artifacts/kwai-browser-windows/
+        path: artifacts
+        pattern: kwai-browser-*
+        merge-multiple: false
       continue-on-error: true
     
-    - name: Download Linux artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: kwai-browser-linux
-        path: artifacts/kwai-browser-linux/
-      continue-on-error: true
-    
-    - name: Download macOS artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: kwai-browser-macos
-        path: artifacts/kwai-browser-macos/
-      continue-on-error: true
-    
+    - name: Check artifacts
+      run: |
+        echo "Available artifacts:"
+        ls -la artifacts/ || echo "No artifacts directory"
+        
     - name: Create Release Archives
       run: |
         mkdir -p release
+        
         if [ -d "artifacts/kwai-browser-windows" ] && [ "$(ls -A artifacts/kwai-browser-windows)" ]; then
           cd artifacts && zip -r ../release/kwai-browser-windows.zip kwai-browser-windows/
           cd ..
           echo "[OK] Windows package created"
         else
-          echo "[Skip] Windows artifact not found"
+          echo "[Skip] Windows artifact not available"
         fi
         
         if [ -d "artifacts/kwai-browser-linux" ] && [ "$(ls -A artifacts/kwai-browser-linux)" ]; then
@@ -145,7 +141,7 @@ jobs:
           cd ..
           echo "[OK] Linux package created"
         else
-          echo "[Skip] Linux artifact not found"
+          echo "[Skip] Linux artifact not available"
         fi
         
         if [ -d "artifacts/kwai-browser-macos" ] && [ "$(ls -A artifacts/kwai-browser-macos)" ]; then
@@ -153,7 +149,7 @@ jobs:
           cd ..
           echo "[OK] macOS package created"
         else
-          echo "[Skip] macOS artifact not found"
+          echo "[Skip] macOS artifact not available"
         fi
     
     - name: Upload Release Assets
@@ -161,4 +157,4 @@ jobs:
       with:
         name: release-packages
         path: release/*
-      continue-on-error: true
+        if-no-files-found: warn

@@ -191,7 +191,7 @@ def main():
             print("[Warn] Not on Linux, build may fail")
         build_linux()
     elif target == 'mac':
-        if current != 'darwin':
+        if current != 'mac':
             print("[Warn] Not on macOS, build will fail")
         else:
             build_mac()

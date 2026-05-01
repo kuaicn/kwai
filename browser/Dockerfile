@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 # Install system dependencies for PyQt6 WebEngine
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libxkbcommon-x11-0 \
     libxcb-icccm4 \

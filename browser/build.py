@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-打包脚本 - 为各平台生成可执行文件
-支持: Windows (.exe), Linux, macOS (.app)
+Build script - Generate executables for all platforms
+Supports: Windows (.exe), Linux, macOS (.app)
 """
 
 import sys
@@ -13,7 +13,7 @@ import subprocess
 
 
 def get_platform():
-    """获取当前平台"""
+    """Get current platform"""
     system = platform.system().lower()
     if system == 'windows':
         return 'windows'
@@ -25,22 +25,21 @@ def get_platform():
 
 
 def clean_dist():
-    """清理打包目录"""
+    """Clean build directories"""
     dirs = ['build', 'dist']
     for d in dirs:
         if os.path.exists(d):
-            print(f"[清理] 删除 {d}/")
+            print(f"[Clean] Removing {d}/")
             shutil.rmtree(d)
-    # 删除 .spec 文件
     for f in os.listdir('.'):
         if f.endswith('.spec'):
-            print(f"[清理] 删除 {f}")
+            print(f"[Clean] Removing {f}")
             os.remove(f)
 
 
 def build_windows():
-    """打包 Windows 版本 (.exe)"""
-    print("[打包] Windows 版本...")
+    """Build Windows executable (.exe)"""
+    print("[Build] Windows version...")
     
     cmd = [
         sys.executable, '-m', 'PyInstaller',
@@ -58,23 +57,22 @@ def build_windows():
     result = subprocess.run(cmd, capture_output=False, text=True)
     
     if result.returncode == 0:
-        print("[成功] Windows 可执行文件已生成: dist/windows/kwai-browser.exe")
-        # 创建启动脚本
+        print("[OK] Windows executable: dist/windows/kwai-browser.exe")
         with open('dist/windows/start.bat', 'w', encoding='utf-8') as f:
             f.write('@echo off\n')
             f.write('set HTTP_PROXY=%HTTP_PROXY%\n')
             f.write('kwai-browser.exe\n')
             f.write('pause\n')
-        print("[创建] 启动脚本: dist/windows/start.bat")
+        print("[OK] Startup script: dist/windows/start.bat")
+        return True
     else:
-        print("[失败] Windows 打包失败")
+        print("[FAIL] Windows build failed")
         return False
-    return True
 
 
 def build_linux():
-    """打包 Linux 版本"""
-    print("[打包] Linux 版本...")
+    """Build Linux executable"""
+    print("[Build] Linux version...")
     
     cmd = [
         sys.executable, '-m', 'PyInstaller',
@@ -91,23 +89,22 @@ def build_linux():
     result = subprocess.run(cmd, capture_output=False, text=True)
     
     if result.returncode == 0:
-        print("[成功] Linux 可执行文件已生成: dist/linux/kwai-browser")
-        # 创建启动脚本
+        print("[OK] Linux executable: dist/linux/kwai-browser")
         with open('dist/linux/start.sh', 'w', encoding='utf-8') as f:
             f.write('#!/bin/bash\n')
             f.write('export HTTP_PROXY="${HTTP_PROXY:-}"\n')
             f.write('./kwai-browser\n')
         os.chmod('dist/linux/start.sh', 0o755)
-        print("[创建] 启动脚本: dist/linux/start.sh")
+        print("[OK] Startup script: dist/linux/start.sh")
+        return True
     else:
-        print("[失败] Linux 打包失败")
+        print("[FAIL] Linux build failed")
         return False
-    return True
 
 
 def build_mac():
-    """打包 macOS 版本 (.app)"""
-    print("[打包] macOS 版本...")
+    """Build macOS app"""
+    print("[Build] macOS version...")
     
     cmd = [
         sys.executable, '-m', 'PyInstaller',
@@ -123,58 +120,46 @@ def build_mac():
     result = subprocess.run(cmd, capture_output=False, text=True)
     
     if result.returncode == 0:
-        print("[成功] macOS 应用已生成: dist/mac/kwai-browser.app")
-        # 创建启动脚本
+        print("[OK] macOS app: dist/mac/kwai-browser.app")
         with open('dist/mac/start.sh', 'w', encoding='utf-8') as f:
             f.write('#!/bin/bash\n')
             f.write('export HTTP_PROXY="${HTTP_PROXY:-}"\n')
             f.write('open kwai-browser.app\n')
         os.chmod('dist/mac/start.sh', 0o755)
-        print("[创建] 启动脚本: dist/mac/start.sh")
+        print("[OK] Startup script: dist/mac/start.sh")
+        return True
     else:
-        print("[失败] macOS 打包失败")
+        print("[FAIL] macOS build failed")
         return False
-    return True
 
 
 def print_cross_compile_info():
-    """输出交叉编译说明"""
+    """Print cross-compile info"""
     print("\n" + "="*60)
-    print("交叉编译说明")
+    print("Cross-Compile Info")
     print("="*60)
     print("""
-PyInstaller 不支持真正的交叉编译。要为其他平台打包：
+PyInstaller does not support true cross-compilation.
 
-1. Windows (当前平台):
-   已在当前系统生成 dist/windows/kwai-browser.exe
+1. Windows (current):
+   Generated: dist/windows/kwai-browser.exe
 
 2. Linux:
-   在 Linux 系统上运行:
-   python build.py --platform linux
-   
-   或使用 Docker:
-   docker run -v $(pwd):/app -w /app python:3.10 bash -c "
-     pip install PyQt6 PyQt6-WebEngine pyinstaller &&
-     python build.py --platform linux
-   "
+   Run on Linux: python build.py --platform linux
+   Or use Docker: docker build -t kwai-browser .
 
 3. macOS:
-   在 macOS 系统上运行:
-   python build.py --platform mac
-   
-   或使用 GitHub Actions 在 macOS runner 上自动打包
-
-替代方案：使用 GitHub Actions 自动化打包
-创建 .github/workflows/build.yml 实现自动打包所有平台
+   Run on macOS: python build.py --platform mac
+   Or use GitHub Actions with macOS runner
 """)
 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description='打包跨域浏览器')
+    parser = argparse.ArgumentParser(description='Build CORS Browser')
     parser.add_argument('--platform', choices=['windows', 'linux', 'mac', 'all'],
-                       default=None, help='目标平台 (默认: 当前平台)')
-    parser.add_argument('--clean', action='store_true', help='清理打包文件')
+                       default=None, help='Target platform (default: current)')
+    parser.add_argument('--clean', action='store_true', help='Clean build files')
     args = parser.parse_args()
     
     if args.clean:
@@ -184,8 +169,8 @@ def main():
     current = get_platform()
     target = args.platform or current
     
-    print(f"[信息] 当前平台: {current}")
-    print(f"[信息] 目标平台: {target}")
+    print(f"[Info] Current platform: {current}")
+    print(f"[Info] Target platform: {target}")
     
     if target == 'all':
         if current == 'windows':
@@ -199,22 +184,19 @@ def main():
             print_cross_compile_info()
     elif target == 'windows':
         if current != 'windows':
-            print("[警告] 当前不是 Windows 系统，可能无法正确打包 Windows 版本")
-            print("[提示] 建议在 Windows 系统上运行此命令")
+            print("[Warn] Not on Windows, build may fail")
         build_windows()
     elif target == 'linux':
         if current != 'linux':
-            print("[警告] 当前不是 Linux 系统，可能无法正确打包 Linux 版本")
-            print("[提示] 建议在 Linux 系统上运行此命令")
+            print("[Warn] Not on Linux, build may fail")
         build_linux()
     elif target == 'mac':
         if current != 'darwin':
-            print("[警告] 当前不是 macOS 系统，无法打包 macOS 版本")
-            print("[提示] 必须在 macOS 系统上运行此命令")
+            print("[Warn] Not on macOS, build will fail")
         else:
             build_mac()
     
-    print("\n[完成] 打包流程结束")
+    print("\n[Done] Build complete")
     print_cross_compile_info()
 
 

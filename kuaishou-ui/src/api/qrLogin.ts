@@ -5,7 +5,7 @@ const BASE_URL = 'https://id.kuaishou.com'
 function defaultProxyOptions() {
   return {
     timings: true,
-    timeout: 300000,
+    timeout: 70000,
     rejectUnauthorized: false,
     followRedirect: true,
   }
@@ -49,9 +49,7 @@ async function postForm(path: string, data: Record<string, string>) {
   })
 }
 
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+
 
 export async function* qrLogin(): AsyncGenerator<QRLoginState, void, unknown> {
   const sid = 'kuaishou.web.cp.api'
@@ -87,35 +85,24 @@ export async function* qrLogin(): AsyncGenerator<QRLoginState, void, unknown> {
     qrLoginSignature,
   }
 
-  // Step 2: polling scanResult
+  // Step 2: scanResult (server-side long-polling ~60s)
   yield { stage: 'scanning' }
 
   let scanRes: any
-  let scanAttempts = 0
-  const maxScanAttempts = 60 // ~60 seconds
-
-  while (scanAttempts < maxScanAttempts) {
-    await sleep(1000)
-    try {
-      scanRes = (await postForm('/rest/c/infra/ks/qr/scanResult', {
-        qrLoginToken,
-        qrLoginSignature,
-        channelType,
-        isWebSig4,
-      })).data
-    } catch {
-      scanAttempts++
-      continue
-    }
-
-    if (scanRes.result === 1 && scanRes.user) {
-      break
-    }
-    scanAttempts++
+  try {
+    scanRes = (await postForm('/rest/c/infra/ks/qr/scanResult', {
+      qrLoginToken,
+      qrLoginSignature,
+      channelType,
+      isWebSig4,
+    })).data
+  } catch (err: any) {
+    yield { stage: 'error', error: err.message || 'scanResult failed' }
+    return
   }
 
-  if (!scanRes || scanRes.result !== 1 || !scanRes.user) {
-    yield { stage: 'error', error: 'scan timeout or failed' }
+  if (scanRes.result !== 1 || !scanRes.user) {
+    yield { stage: 'error', error: `scanResult failed: result=${scanRes.result}` }
     return
   }
 
@@ -128,36 +115,25 @@ export async function* qrLogin(): AsyncGenerator<QRLoginState, void, unknown> {
 
   yield { stage: 'scanned', userInfo }
 
-  // Step 3: polling acceptResult
+  // Step 3: acceptResult (server-side long-polling ~60s)
   yield { stage: 'accepting' }
 
   let acceptRes: any
-  let acceptAttempts = 0
-  const maxAcceptAttempts = 60 // ~60 seconds
-
-  while (acceptAttempts < maxAcceptAttempts) {
-    await sleep(1000)
-    try {
-      acceptRes = (await postForm('/rest/c/infra/ks/qr/acceptResult', {
-        qrLoginToken,
-        qrLoginSignature,
-        sid,
-        channelType,
-        isWebSig4,
-      })).data
-    } catch {
-      acceptAttempts++
-      continue
-    }
-
-    if (acceptRes.result === 1 && acceptRes.qrToken) {
-      break
-    }
-    acceptAttempts++
+  try {
+    acceptRes = (await postForm('/rest/c/infra/ks/qr/acceptResult', {
+      qrLoginToken,
+      qrLoginSignature,
+      sid,
+      channelType,
+      isWebSig4,
+    })).data
+  } catch (err: any) {
+    yield { stage: 'error', error: err.message || 'acceptResult failed' }
+    return
   }
 
-  if (!acceptRes || acceptRes.result !== 1 || !acceptRes.qrToken) {
-    yield { stage: 'error', error: 'accept timeout or failed' }
+  if (acceptRes.result !== 1 || !acceptRes.qrToken) {
+    yield { stage: 'error', error: `acceptResult failed: result=${acceptRes.result}` }
     return
   }
 

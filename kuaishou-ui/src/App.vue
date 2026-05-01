@@ -8,6 +8,7 @@
         <v-tab to="/agency">公会机构</v-tab>
         <v-tab to="/live-app">直播（App）</v-tab>
         <v-tab to="/live-web">直播（Web）</v-tab>
+        <v-tab to="/account">账户</v-tab>
       </v-tabs>
     </v-app-bar>
 

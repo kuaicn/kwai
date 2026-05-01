@@ -16,6 +16,7 @@ const router = createRouter({
     { path: '/agency', component: () => import('@/pages/agency.vue') },
     { path: '/live-app', component: () => import('@/pages/live-app.vue') },
     { path: '/live-web', component: () => import('@/pages/live-web.vue') },
+    { path: '/account', component: () => import('@/pages/account.vue') },
   ],
 })
 

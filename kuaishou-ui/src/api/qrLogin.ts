@@ -51,8 +51,9 @@ async function postForm(path: string, data: Record<string, string>) {
 
 
 
-export async function* qrLogin(): AsyncGenerator<QRLoginState, void, unknown> {
-  const sid = 'kuaishou.web.cp.api'
+export async function* qrLogin(
+  sid: string = 'kuaishou.web.cp.api',
+): AsyncGenerator<QRLoginState, void, unknown> {
   const channelType = 'PC_PAGE'
   const isWebSig4 = 'true'
 

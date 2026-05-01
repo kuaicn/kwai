@@ -12,22 +12,14 @@ import { registerPlugins } from '@/plugins'
 
 // Components
 import App from './App.vue'
-import BrowserCheckOverlay from '@/components/BrowserCheckOverlay.vue'
 
 // Styles
 import 'unfonts.css'
 import 'virtual:uno.css'
 import './styles/main.scss'
 
-import axios from 'axios'
+const app = createApp(App)
 
-axios.get('https://www.bing.com')
-  .then(() => {
-    const app = createApp(App)
-    registerPlugins(app)
-    app.mount('#app')
-  })
-  .catch(() => {
-    const app = createApp(BrowserCheckOverlay)
-    app.mount('#app')
-  })
+registerPlugins(app)
+
+app.mount('#app')

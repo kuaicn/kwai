@@ -129,6 +129,7 @@ interface ScanStatus {
 const sidOptions = [
   { label: '电商MCN + 小店 (kuaishou.shop.b)', value: 'kuaishou.shop.b' },
   { label: '娱乐公会 + 公会机构 (kuaishou.web.cp.api)', value: 'kuaishou.web.cp.api' },
+  { label: '直播（Web） (kuaishou.live.web)', value: 'kuaishou.live.web' },
 ]
 
 const selectedSid = ref('kuaishou.web.cp.api')

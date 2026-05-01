@@ -5,16 +5,18 @@
  */
 
 // Composables
-import { createRouter, createWebHistory } from 'vue-router'
-import Index from '@/pages/index.vue'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
-    {
-      path: '/',
-      component: Index,
-    },
+    { path: '/', component: () => import('@/pages/index.vue') },
+    { path: '/mcn', component: () => import('@/pages/mcn.vue') },
+    { path: '/guild', component: () => import('@/pages/guild.vue') },
+    { path: '/agency', component: () => import('@/pages/agency.vue') },
+    { path: '/service', component: () => import('@/pages/service.vue') },
+    { path: '/live-app', component: () => import('@/pages/live-app.vue') },
+    { path: '/live-web', component: () => import('@/pages/live-web.vue') },
   ],
 })
 

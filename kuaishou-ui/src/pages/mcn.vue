@@ -29,6 +29,15 @@
           </v-btn>
         </v-card>
 
+        <v-alert
+          v-if="errorMsg"
+          type="error"
+          :text="errorMsg"
+          class="mb-4"
+          closable
+          @click:close="errorMsg = null"
+        />
+
         <v-card v-if="accountInfo" variant="outlined">
           <v-card-title class="text-h6 font-weight-bold">
             账户详细信息
@@ -86,7 +95,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAccounts, type Account } from '@/composables/useAccountDB'
+import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
 
 interface AccountInfo {
@@ -108,6 +117,7 @@ interface AccountInfo {
 const accounts = ref<Account[]>([])
 const selectedAccount = ref<Account | null>(null)
 const accountInfo = ref<AccountInfo | null>(null)
+const errorMsg = ref<string | null>(null)
 
 const accountOptions = computed(() => {
   return accounts.value
@@ -126,6 +136,8 @@ async function loadAccounts() {
 async function fetchAccountInfo() {
   if (!selectedAccount.value) return
   const acc = selectedAccount.value
+  errorMsg.value = null
+  accountInfo.value = null
 
   try {
     const res = await proxy.get(
@@ -142,13 +154,24 @@ async function fetchAccountInfo() {
         },
       },
     )
+
+    if (res.data.result === 109) {
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+
     if (res.data.result === 1 && res.data.data) {
       accountInfo.value = res.data.data
     } else {
-      accountInfo.value = null
+      errorMsg.value = res.data.errorMsg || `请求失败: result=${res.data.result}`
     }
   } catch (err: any) {
-    accountInfo.value = null
+    errorMsg.value = err.message || '请求异常'
   }
 }
 

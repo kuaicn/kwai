@@ -19,14 +19,7 @@
             clearable
           />
 
-          <v-btn
-            :disabled="!selectedAccount"
-            color="primary"
-            block
-            @click="fetchAccountInfo"
-          >
-            获取账户信息
-          </v-btn>
+
         </v-card>
 
         <v-alert
@@ -123,7 +116,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
 
@@ -203,6 +196,15 @@ async function fetchAccountInfo() {
     errorMsg.value = err.message || '请求异常'
   }
 }
+
+watch(selectedAccount, (val) => {
+  if (val) {
+    fetchAccountInfo()
+  } else {
+    accountInfo.value = null
+    errorMsg.value = null
+  }
+})
 
 onMounted(() => {
   loadAccounts()

@@ -61,7 +61,7 @@
             </div>
 
             <!-- 公会信息卡片 -->
-            <v-card variant="outlined" class="mb-4 pa-4">
+            <v-card variant="outlined" class="mb-6 pa-4">
               <div class="d-flex align-center">
                 <v-avatar size="56" class="mr-4">
                   <v-img :src="guildInfo.orgBasicInfo.orgInfo.logo" cover />
@@ -74,7 +74,7 @@
             </v-card>
 
             <!-- 等级与特权 -->
-            <v-row dense class="mb-4">
+            <v-row dense class="mb-6">
               <v-col cols="6" sm="4">
                 <v-card variant="tonal" class="pa-3 text-center">
                   <div class="text-caption text-medium-emphasis">公会等级</div>
@@ -95,31 +95,20 @@
               </v-col>
             </v-row>
 
-            <!-- 开关状态 -->
-            <div class="text-subtitle-2 font-weight-bold mb-3">功能开关</div>
-            <v-row dense>
-              <v-col v-for="(item, key) in switches" :key="key" cols="6" sm="3">
-                <v-card
-                  variant="tonal"
-                  class="pa-3 text-center"
-                  :color="item.value ? 'success' : 'grey-lighten-2'"
-                >
-                  <v-icon
-                    size="20"
-                    :color="item.value ? 'success' : 'grey'"
-                    class="mb-1"
-                  >
-                    {{ item.value ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                  </v-icon>
-                  <div
-                    class="text-caption font-weight-medium"
-                    :class="item.value ? 'text-success' : 'text-grey'"
-                  >
-                    {{ item.label }}
-                  </div>
-                </v-card>
-              </v-col>
-            </v-row>
+            <!-- 权限列表 -->
+            <div class="text-subtitle-1 font-weight-bold mb-3">权限列表</div>
+            <v-treeview
+              :items="menuItems"
+              item-title="name"
+              item-value="code"
+              item-children="sub"
+              open-all
+              density="compact"
+            >
+              <template #prepend="{ item }">
+                <v-icon size="18" class="mr-2">mdi-folder-outline</v-icon>
+              </template>
+            </v-treeview>
           </v-card-text>
         </v-card>
       </v-col>
@@ -131,6 +120,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
+
+interface MenuItem {
+  name: string
+  code?: string
+  url?: string
+  authCodes?: string[]
+  sub?: MenuItem[]
+}
 
 interface GuildInfo {
   orgBasicInfo: {
@@ -162,15 +159,9 @@ interface GuildInfo {
     level: number
     showNew: boolean
   }
-  activity: { show: boolean }
-  miniProgram: { show: boolean }
-  monitor: { enableMonitor: boolean }
-  unionOp: { enableUnionOp: boolean }
-  provinceAgent: { enableProvinceAgent: boolean }
-  businessType: { type: number }
-  settledStatus: { status: number }
-  batchPlanConfig: { enableBatchCreate: boolean }
-  liveStream: boolean
+  orgAuthority: {
+    newMenu: MenuItem[]
+  }
   [key: string]: any
 }
 
@@ -189,18 +180,8 @@ const accountOptions = computed(() => {
     }))
 })
 
-const switches = computed(() => {
-  if (!guildInfo.value) return []
-  return [
-    { label: '活动', value: guildInfo.value.activity?.show },
-    { label: '小程序', value: guildInfo.value.miniProgram?.show },
-    { label: '监控', value: guildInfo.value.monitor?.enableMonitor },
-    { label: '联运', value: guildInfo.value.unionOp?.enableUnionOp },
-    { label: '省代', value: guildInfo.value.provinceAgent?.enableProvinceAgent },
-    { label: '直播流', value: guildInfo.value.liveStream },
-    { label: '批量创建', value: guildInfo.value.batchPlanConfig?.enableBatchCreate },
-    { label: '入驻', value: guildInfo.value.settledStatus?.status === 1 },
-  ]
+const menuItems = computed(() => {
+  return guildInfo.value?.orgAuthority?.newMenu || []
 })
 
 async function loadAccounts() {

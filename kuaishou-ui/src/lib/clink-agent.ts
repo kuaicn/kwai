@@ -967,8 +967,9 @@ const Util = {
       }
     }
 
+    let jsonpId = 0;
     function jsonp(params: any) {
-      const callbackName = params.jsonp + '_' + new Date().getTime();
+      const callbackName = params.jsonp + '_' + (++jsonpId) + '_' + new Date().getTime();
       const head = document.getElementsByTagName('head')[0];
       params.data['callback'] = callbackName;
       const data = formatParams(params.data);
@@ -2176,12 +2177,13 @@ const ClinkClient = {
     Util.ajax({
       type: 'GET',
       url: GLOBAL.webSocketUrl + '/login',
-      dataType: 'json',
+      dataType: 'jsonp',
       data: {
         identifier: params.identifier,
         cno: params.cno,
         password: encodeURIComponent(params.password || ''),
       },
+      jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
           const onlineParams: OnlineParams = {
@@ -2241,12 +2243,13 @@ const ClinkClient = {
     Util.ajax({
       type: 'GET',
       url: GLOBAL.webSocketUrl + '/safeLogin',
-      dataType: 'json',
+      dataType: 'jsonp',
       data: {
         identifier: params.identifier,
         cno: params.cno,
         password: encodeURIComponent(params.password || ''),
       },
+      jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
           const onlineParams: OnlineParams = {

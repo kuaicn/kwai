@@ -2186,21 +2186,17 @@ const ClinkClient = {
       jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
-          const onlineParams: OnlineParams = {
-            identifier: params.identifier || GLOBAL.identifier,
-            enterpriseId: result.data.enterpriseId,
-            cno: params.cno,
-            qids: result.data.qids,
-            emailQids: result.data.emailQids,
-            webSocketUrl: result.data.webSocketUrl,
-            token: result.data.token,
-            allowBackward: result.data.allowBackward,
-            answerCallsByCloseBrowser: result.data.answerCallsByCloseBrowser,
-            unbindPhoneByCloseBrowser: result.data.unbindPhoneByCloseBrowser,
-          };
+          params.qids = result.data.qids;
+          params.emailQids = result.data.emailQids;
+          params.webSocketUrl = result.data.webSocketUrl;
+          params.enterpriseId = result.data.enterpriseId;
+          params.token = result.data.token;
+          params.allowBackward = result.data.allowBackward;
+          params.answerCallsByCloseBrowser = result.data.answerCallsByCloseBrowser;
+          params.unbindPhoneByCloseBrowser = result.data.unbindPhoneByCloseBrowser;
 
           if (document.location.protocol === 'https:') {
-            onlineParams.webSocketUrl = (onlineParams.webSocketUrl || '').replace('http:', 'https:');
+            params.webSocketUrl = (params.webSocketUrl || '').replace('http:', 'https:');
           }
 
           if (params.forceLoginCheck === undefined) {
@@ -2216,8 +2212,8 @@ const ClinkClient = {
             params.type = Number(params.type);
           }
 
-          onlineParams.timeStamp = new Date().getTime().toString();
-          ClinkClient.online(onlineParams);
+          params.timeStamp = new Date().getTime().toString();
+          ClinkClient.online(params as OnlineParams);
         } else {
           logger.error(JSON.stringify(result));
           result.code = -1;
@@ -2252,18 +2248,14 @@ const ClinkClient = {
       jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
-          const onlineParams: OnlineParams = {
-            identifier: params.identifier || GLOBAL.identifier,
-            enterpriseId: result.data.enterpriseId,
-            cno: params.cno,
-            qids: result.data.qids,
-            emailQids: result.data.emailQids,
-            webSocketUrl: result.data.webSocketUrl,
-            token: result.data.token,
-            allowBackward: result.data.allowBackward,
-            answerCallsByCloseBrowser: result.data.answerCallsByCloseBrowser,
-            unbindPhoneByCloseBrowser: result.data.unbindPhoneByCloseBrowser,
-          };
+          params.qids = result.data.qids;
+          params.emailQids = result.data.emailQids;
+          params.webSocketUrl = result.data.webSocketUrl;
+          params.enterpriseId = result.data.enterpriseId;
+          params.token = result.data.token;
+          params.allowBackward = result.data.allowBackward;
+          params.answerCallsByCloseBrowser = result.data.answerCallsByCloseBrowser;
+          params.unbindPhoneByCloseBrowser = result.data.unbindPhoneByCloseBrowser;
 
           if (params.forceLoginCheck === undefined) {
             params.forceLoginCheck = false;
@@ -2273,7 +2265,7 @@ const ClinkClient = {
           }
 
           if (document.location.protocol === 'https:') {
-            onlineParams.webSocketUrl = (onlineParams.webSocketUrl || '').replace('http:', 'https:');
+            params.webSocketUrl = (params.webSocketUrl || '').replace('http:', 'https:');
           }
 
           if (params.bindType !== undefined && typeof params.bindType === 'string') {
@@ -2283,8 +2275,8 @@ const ClinkClient = {
             params.type = Number(params.type);
           }
 
-          onlineParams.timeStamp = new Date().getTime().toString();
-          ClinkClient.online(onlineParams);
+          params.timeStamp = new Date().getTime().toString();
+          ClinkClient.online(params as OnlineParams);
         } else {
           logger.error(JSON.stringify(result));
           result.code = -1;

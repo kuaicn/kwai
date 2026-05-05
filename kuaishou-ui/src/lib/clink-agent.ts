@@ -899,6 +899,7 @@ const Util = {
   ajax(params: any) {
     params = params || {};
     params.data = params.data || {};
+    let jsonpId = 0;
 
     switch (params.dataType) {
       case 'jsonp':
@@ -967,7 +968,6 @@ const Util = {
       }
     }
 
-    let jsonpId = 0;
     function jsonp(params: any) {
       const callbackName = params.jsonp + '_' + (++jsonpId) + '_' + new Date().getTime();
       const head = document.getElementsByTagName('head')[0];

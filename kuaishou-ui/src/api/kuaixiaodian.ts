@@ -129,3 +129,25 @@ export async function fetchUnsettledBills(
 
   return allRecords
 }
+
+export interface OutcallLoginBody {
+  receiverId: number
+  callerName?: string
+  businessId: number
+  role: number
+  queues: string[]
+}
+
+export function getOutcallLoginInfo(body: OutcallLoginBody, cookies: Record<string, string>) {
+  return proxy.post(
+    `${BASE_URL}/gateway/business/merchant/message/center/m/outcall/login/info/org/get`,
+    body,
+    {
+      originalHeaders: {
+        Cookie: buildCookieHeader(cookies),
+        'Content-Type': 'application/json',
+      },
+      proxyOptions: defaultProxyOptions(),
+    },
+  )
+}

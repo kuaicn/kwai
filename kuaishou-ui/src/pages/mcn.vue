@@ -154,6 +154,75 @@
             </div>
           </v-card-text>
         </v-card>
+
+        <!-- 软电话 -->
+        <v-card v-if="selectedAccount" variant="outlined" class="mt-4 pa-4">
+          <v-card-title class="text-h6 font-weight-bold mb-2 d-flex align-center justify-space-between">
+            <span>软电话</span>
+            <v-chip v-if="softPhoneStatus" :color="softPhoneColor" size="small" variant="flat">
+              {{ softPhoneStatusText }}
+            </v-chip>
+          </v-card-title>
+
+          <v-card-text>
+            <div v-if="!softPhoneLoggedIn" class="d-flex gap-2">
+              <v-btn
+                color="primary"
+                :loading="softPhoneLoading"
+                prepend-icon="mdi-phone"
+                @click="loginSoftPhone"
+              >
+                登录软电话
+              </v-btn>
+            </div>
+
+            <div v-else>
+              <v-row dense class="mb-3">
+                <v-col cols="8">
+                  <v-text-field
+                    v-model="outcallNumber"
+                    label="外呼号码"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    @keyup.enter="makeOutcall"
+                  />
+                </v-col>
+                <v-col cols="4">
+                  <v-btn color="success" block height="40" @click="makeOutcall">
+                    <v-icon start>mdi-phone-outgoing</v-icon>
+                    呼叫
+                  </v-btn>
+                </v-col>
+              </v-row>
+
+              <div class="d-flex gap-2 flex-wrap mb-3">
+                <v-btn color="error" variant="outlined" prepend-icon="mdi-phone-hangup" @click="hangupCall">
+                  挂断
+                </v-btn>
+                <v-btn color="warning" variant="outlined" prepend-icon="mdi-pause-circle" @click="pauseAgent">
+                  置忙
+                </v-btn>
+                <v-btn color="info" variant="outlined" prepend-icon="mdi-play-circle" @click="unpauseAgent">
+                  置闲
+                </v-btn>
+                <v-btn variant="outlined" prepend-icon="mdi-logout" @click="logoutSoftPhone">
+                  登出
+                </v-btn>
+              </div>
+
+              <v-divider class="mb-2" />
+              <div class="text-caption text-medium-emphasis mb-1">事件日志</div>
+              <div class="softphone-logs">
+                <div v-for="(log, idx) in softPhoneLogs" :key="idx" class="text-caption py-1">
+                  <span class="text-grey">{{ log.time }}</span>
+                  <span class="ml-2">{{ log.message }}</span>
+                </div>
+                <div v-if="softPhoneLogs.length === 0" class="text-caption text-grey">暂无日志</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
   </v-container>
@@ -163,7 +232,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
-import { fetchUnsettledBills } from '@/api/kuaixiaodian'
+import { fetchUnsettledBills, getOutcallLoginInfo } from '@/api/kuaixiaodian'
+import { createClinkAgent, EVENT_TYPE, RESPONSE_TYPE, type TokenMessage } from '@/lib/clink-agent'
 
 interface AccountInfo {
   existAccount: boolean
@@ -186,6 +256,11 @@ interface DayData {
   settlement: number
   income: number
   outgoing: number
+}
+
+interface SoftPhoneLog {
+  time: string
+  message: string
 }
 
 const accounts = ref<Account[]>([])
@@ -230,6 +305,201 @@ const calendarDays = computed(() => {
 
   return days
 })
+
+/* ---------- 软电话状态 ---------- */
+
+const softPhoneLoggedIn = ref(false)
+const softPhoneLoading = ref(false)
+const softPhoneStatus = ref('')
+const outcallNumber = ref('')
+const softPhoneLogs = ref<SoftPhoneLog[]>([])
+let softPhoneClient: any = null
+
+const softPhoneStatusText = computed(() => {
+  const map: Record<string, string> = {
+    IDLE: '空闲',
+    PAUSE: '忙碌',
+    OFFLINE: '离线',
+    WRAPUP: '整理中',
+    BUSY: '通话中',
+  }
+  return map[softPhoneStatus.value] || softPhoneStatus.value
+})
+
+const softPhoneColor = computed(() => {
+  const map: Record<string, string> = {
+    IDLE: 'success',
+    PAUSE: 'warning',
+    OFFLINE: 'grey',
+    BUSY: 'error',
+    WRAPUP: 'primary',
+  }
+  return map[softPhoneStatus.value] || 'primary'
+})
+
+function addSoftPhoneLog(message: string) {
+  const now = new Date().toLocaleTimeString()
+  softPhoneLogs.value.unshift({ time: now, message })
+  if (softPhoneLogs.value.length > 20) {
+    softPhoneLogs.value.pop()
+  }
+}
+
+async function loginSoftPhone() {
+  if (!selectedAccount.value) return
+  softPhoneLoading.value = true
+  errorMsg.value = null
+
+  try {
+    const res: any = await getOutcallLoginInfo(
+      {
+        receiverId: 666666,
+        callerName: '',
+        businessId: 26000,
+        role: 10,
+        queues: ['1001'],
+      },
+      {
+        userId: String(selectedAccount.value.userId),
+        'kuaishou.shop.b_st': selectedAccount.value.apiSt,
+      },
+    )
+
+    if (res.data.result === 109) {
+      throw new Error('SESSION_EXPIRED')
+    }
+    if (res.data.result !== 1) {
+      errorMsg.value = res.data.error_msg || '获取软电话登录信息失败'
+      return
+    }
+
+    const loginInfo = res.data.data?.loginInfo
+    if (!loginInfo) {
+      errorMsg.value = '未获取到软电话登录信息'
+      return
+    }
+
+    softPhoneClient = createClinkAgent(
+      loginInfo.identifier,
+      'https://ws-ksip-y.corp.kuaishou.com',
+    )
+
+    softPhoneClient.registerListener(EVENT_TYPE.STATUS, (token: TokenMessage) => {
+      softPhoneStatus.value = token.code as string
+      addSoftPhoneLog(`状态变更: ${token.code}`)
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.SIP_REGISTERED, (token: TokenMessage) => {
+      addSoftPhoneLog(`软电话注册: ${token.msg}`)
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.RINGING, () => {
+      addSoftPhoneLog('来电响铃')
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.PREVIEW_OUTCALL_START, () => {
+      addSoftPhoneLog('开始外呼')
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.PREVIEW_OUTCALL_BRIDGE, () => {
+      addSoftPhoneLog('外呼接通')
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.KICKOUT, () => {
+      addSoftPhoneLog('被踢下线')
+      softPhoneLoggedIn.value = false
+      softPhoneStatus.value = ''
+    })
+
+    softPhoneClient.registerListener(EVENT_TYPE.BREAK_LINE, () => {
+      addSoftPhoneLog('连接断开，正在重连...')
+    })
+
+    softPhoneClient.registerCallback(RESPONSE_TYPE.LOGIN, (token: TokenMessage) => {
+      if (token.code === 0) {
+        softPhoneLoggedIn.value = true
+        addSoftPhoneLog('登录成功')
+      } else {
+        addSoftPhoneLog(`登录失败: ${JSON.stringify(token)}`)
+      }
+    })
+
+    softPhoneClient.registerCallback(RESPONSE_TYPE.PAUSE, () => {
+      addSoftPhoneLog('置忙成功')
+    })
+
+    softPhoneClient.registerCallback(RESPONSE_TYPE.UNPAUSE, () => {
+      addSoftPhoneLog('置闲成功')
+    })
+
+    softPhoneClient.registerCallback(RESPONSE_TYPE.PREVIEW_OUTCALL, (token: TokenMessage) => {
+      addSoftPhoneLog(`外呼响应: ${token.code}`)
+    })
+
+    softPhoneClient.setup(
+      { debug: true, sipPhone: false, connectInterval: 1000 },
+      () => {
+        softPhoneClient.login({
+          cno: loginInfo.agentId,
+          password: loginInfo.password,
+        })
+      },
+    )
+  } catch (err: any) {
+    if (err.message === 'SESSION_EXPIRED') {
+      const acc = selectedAccount.value
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      accountInfo.value = null
+      softPhoneLoggedIn.value = false
+      softPhoneStatus.value = ''
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+    errorMsg.value = err.message || '软电话登录异常'
+  } finally {
+    softPhoneLoading.value = false
+  }
+}
+
+function logoutSoftPhone() {
+  if (softPhoneClient) {
+    softPhoneClient.logout({ logoutMode: 1, chatClose: 1 })
+    softPhoneClient = null
+  }
+  softPhoneLoggedIn.value = false
+  softPhoneStatus.value = ''
+  softPhoneLogs.value = []
+}
+
+function makeOutcall() {
+  if (!softPhoneClient || !outcallNumber.value) return
+  softPhoneClient.previewOutcall({ tel: outcallNumber.value })
+  addSoftPhoneLog(`发起外呼: ${outcallNumber.value}`)
+}
+
+function hangupCall() {
+  if (!softPhoneClient) return
+  softPhoneClient.unlink()
+  addSoftPhoneLog('挂断')
+}
+
+function pauseAgent() {
+  if (!softPhoneClient) return
+  softPhoneClient.pause({ pauseType: 1, pauseDescription: '置忙' })
+  addSoftPhoneLog('置忙')
+}
+
+function unpauseAgent() {
+  if (!softPhoneClient) return
+  softPhoneClient.unpause()
+  addSoftPhoneLog('置闲')
+}
+
+/* ---------- 原有方法 ---------- */
 
 async function loadAccounts() {
   accounts.value = await getAccounts()
@@ -357,6 +627,7 @@ watch(selectedAccount, (val) => {
     accountInfo.value = null
     errorMsg.value = null
     dayDataMap.value = new Map()
+    logoutSoftPhone()
   }
 })
 
@@ -381,5 +652,13 @@ onMounted(() => {
 
 .calendar-day.has-data {
   background: rgba(var(--v-theme-primary), 0.06);
+}
+
+.softphone-logs {
+  max-height: 120px;
+  overflow-y: auto;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 4px;
+  padding: 8px;
 }
 </style>

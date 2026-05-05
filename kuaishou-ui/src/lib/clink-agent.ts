@@ -408,7 +408,7 @@ const EventUtil = {
   }
 
   if (typeof JSON.stringify !== 'function') {
-    JSON.stringify = function (
+    (JSON as any).stringify = function (
       value: any,
       replacer?: any,
       space?: number | string,
@@ -1244,7 +1244,9 @@ const WebSocketClient = {
       }
 
       EventSystem.callSessionHandler(token);
-      EventSystem.invoke(token.event, token);
+      if (token.event) {
+        EventSystem.invoke(token.event, token);
+      }
     } else {
       logger.debug(JSON.stringify(token));
     }
@@ -1523,7 +1525,7 @@ const SipPhone = {
         registerExpires: Agent.webrtcExpiresTime,
       });
     } catch (e) {
-      logger.error(e);
+      logger.error(e instanceof Error ? e.message : String(e));
     }
 
     if (!sipPhoneInstance) {
@@ -2428,10 +2430,10 @@ const ClinkClient = {
       return;
     }
     params.tel = params.tel.replace(/\s+/g, '').replace(/-/g, '');
-    if (isNaN(params.timeout) || (params.timeout as number) > 60 || (params.timeout as number) < 5) {
+    if (typeof params.timeout !== 'number' || isNaN(params.timeout) || params.timeout > 60 || params.timeout < 5) {
       params.timeout = 30;
     }
-    if (isNaN(params.dialTelTimeout) || (params.dialTelTimeout as number) > 60 || (params.dialTelTimeout as number) < 5) {
+    if (typeof params.dialTelTimeout !== 'number' || isNaN(params.dialTelTimeout) || params.dialTelTimeout > 60 || params.dialTelTimeout < 5) {
       params.dialTelTimeout = 60;
     }
     WebSocketClient.sendToken({
@@ -2458,10 +2460,10 @@ const ClinkClient = {
       logger.debug('ClinkAgent.internalCall | 内部呼叫, 号码不能为空');
       return;
     }
-    if (isNaN(params.timeout) || params.timeout > 60 || params.timeout < 5) {
+    if (typeof params.timeout !== 'number' || isNaN(params.timeout) || params.timeout > 60 || params.timeout < 5) {
       params.timeout = 30;
     }
-    if (isNaN(params.dialTelTimeout) || params.dialTelTimeout > 60 || params.dialTelTimeout < 5) {
+    if (typeof params.dialTelTimeout !== 'number' || isNaN(params.dialTelTimeout) || params.dialTelTimeout > 60 || params.dialTelTimeout < 5) {
       params.dialTelTimeout = 45;
     }
     WebSocketClient.sendToken({

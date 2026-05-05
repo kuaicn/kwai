@@ -2,3 +2,10 @@ node_modules/
 dist/
 *.local
 .vite/
+
+# TypeScript build artifacts in src (should not be committed)
+src/**/*.js
+src/**/*.d.ts
+
+# Auto-generated agent docs
+AGENTS.md

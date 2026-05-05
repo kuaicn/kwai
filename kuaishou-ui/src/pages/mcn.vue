@@ -224,7 +224,6 @@
                     variant="outlined"
                     density="compact"
                     hide-details
-                    :disabled="!canCall"
                     @keyup.enter="makeOutcall"
                   />
                 </v-col>

@@ -159,14 +159,15 @@
         <v-card v-if="selectedAccount" variant="outlined" class="mt-4 pa-4">
           <v-card-title class="text-h6 font-weight-bold mb-2 d-flex align-center justify-space-between">
             <span>软电话</span>
-            <v-chip v-if="softPhoneStatus" :color="softPhoneColor" size="small" variant="flat">
+            <v-chip v-if="softPhoneLoggedIn" :color="softPhoneColor" size="small" variant="flat">
               {{ softPhoneStatusText }}
             </v-chip>
           </v-card-title>
 
           <v-card-text>
-            <div v-if="!softPhoneLoggedIn" class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap mb-3">
               <v-btn
+                v-if="!softPhoneLoggedIn"
                 color="primary"
                 :loading="softPhoneLoading"
                 prepend-icon="mdi-phone"
@@ -174,10 +175,48 @@
               >
                 登录软电话
               </v-btn>
+
+              <template v-else>
+                <v-btn
+                  color="error"
+                  variant="outlined"
+                  prepend-icon="mdi-phone-hangup"
+                  :disabled="!canHangup"
+                  @click="hangupCall"
+                >
+                  挂断
+                </v-btn>
+                <v-btn
+                  color="warning"
+                  variant="outlined"
+                  prepend-icon="mdi-pause-circle"
+                  :disabled="!canPause"
+                  @click="pauseAgent"
+                >
+                  置忙
+                </v-btn>
+                <v-btn
+                  color="info"
+                  variant="outlined"
+                  prepend-icon="mdi-play-circle"
+                  :disabled="!canUnpause"
+                  @click="unpauseAgent"
+                >
+                  置闲
+                </v-btn>
+                <v-btn
+                  variant="outlined"
+                  prepend-icon="mdi-logout"
+                  :disabled="!canLogout"
+                  @click="logoutSoftPhone"
+                >
+                  登出
+                </v-btn>
+              </template>
             </div>
 
-            <div v-else>
-              <v-row dense class="mb-3">
+            <div v-if="softPhoneLoggedIn" class="mb-3">
+              <v-row dense>
                 <v-col cols="8">
                   <v-text-field
                     v-model="outcallNumber"
@@ -185,31 +224,24 @@
                     variant="outlined"
                     density="compact"
                     hide-details
+                    :disabled="!canCall"
                     @keyup.enter="makeOutcall"
                   />
                 </v-col>
                 <v-col cols="4">
-                  <v-btn color="success" block height="40" @click="makeOutcall">
+                  <v-btn
+                    color="success"
+                    block
+                    height="40"
+                    :disabled="!canCall"
+                    @click="makeOutcall"
+                  >
                     <v-icon start>mdi-phone-outgoing</v-icon>
                     呼叫
                   </v-btn>
                 </v-col>
               </v-row>
-
-              <div class="d-flex gap-2 flex-wrap mb-3">
-                <v-btn color="error" variant="outlined" prepend-icon="mdi-phone-hangup" @click="hangupCall">
-                  挂断
-                </v-btn>
-                <v-btn color="warning" variant="outlined" prepend-icon="mdi-pause-circle" @click="pauseAgent">
-                  置忙
-                </v-btn>
-                <v-btn color="info" variant="outlined" prepend-icon="mdi-play-circle" @click="unpauseAgent">
-                  置闲
-                </v-btn>
-                <v-btn variant="outlined" prepend-icon="mdi-logout" @click="logoutSoftPhone">
-                  登出
-                </v-btn>
-              </div>
+            </div>
 
               <v-divider class="mb-2" />
               <div class="text-caption text-medium-emphasis mb-1">事件日志</div>
@@ -322,6 +354,8 @@ const softPhoneStatusText = computed(() => {
     OFFLINE: '离线',
     WRAPUP: '整理中',
     BUSY: '通话中',
+    CALLING: '呼叫中',
+    RINGING: '响铃中',
   }
   return map[softPhoneStatus.value] || softPhoneStatus.value
 })
@@ -333,9 +367,17 @@ const softPhoneColor = computed(() => {
     OFFLINE: 'grey',
     BUSY: 'error',
     WRAPUP: 'primary',
+    CALLING: 'info',
+    RINGING: 'deep-purple',
   }
   return map[softPhoneStatus.value] || 'primary'
 })
+
+const canCall = computed(() => softPhoneLoggedIn.value && softPhoneStatus.value === 'IDLE' && outcallNumber.value.trim().length > 0)
+const canHangup = computed(() => softPhoneLoggedIn.value && ['BUSY', 'RINGING', 'CALLING'].includes(softPhoneStatus.value))
+const canPause = computed(() => softPhoneLoggedIn.value && softPhoneStatus.value === 'IDLE')
+const canUnpause = computed(() => softPhoneLoggedIn.value && softPhoneStatus.value === 'PAUSE')
+const canLogout = computed(() => softPhoneLoggedIn.value)
 
 function addSoftPhoneLog(message: string) {
   const now = new Date().toLocaleTimeString()

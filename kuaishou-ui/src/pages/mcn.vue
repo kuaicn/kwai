@@ -155,6 +155,136 @@
           </v-card-text>
         </v-card>
 
+        <!-- 主播邀约 -->
+        <v-card v-if="selectedAccount" variant="outlined" class="mt-4 pa-4">
+          <v-card-title class="text-h6 font-weight-bold mb-2">
+            主播邀约
+          </v-card-title>
+          <v-card-text>
+            <v-row dense class="mb-3">
+              <v-col cols="8">
+                <v-text-field
+                  v-model="talentSearchKw"
+                  label="输入快手 ID"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  @keyup.enter="searchTalent"
+                />
+              </v-col>
+              <v-col cols="4">
+                <v-btn color="primary" block height="40" :loading="talentLoading" @click="searchTalent">
+                  查询
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <div v-if="talentResult">
+              <v-card variant="outlined" class="pa-3">
+                <div class="d-flex align-center">
+                  <v-avatar size="56" class="mr-3">
+                    <v-img :src="talentResult.userInfo.headImg" cover />
+                  </v-avatar>
+                  <div class="flex-grow-1">
+                    <div class="d-flex align-center gap-2 flex-wrap">
+                      <span class="text-subtitle-1 font-weight-bold">{{ talentResult.userInfo.name }}</span>
+                      <v-chip v-if="talentResult.userInfo.fansNum" size="x-small" color="primary" variant="flat">
+                        {{ talentResult.userInfo.fansNum }} 粉丝
+                      </v-chip>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">ID: {{ talentResult.userInfo.userId }}</div>
+                    <v-chip
+                      :color="talentResult.canInvite.disable ? 'error' : 'success'"
+                      size="small"
+                      class="mt-1"
+                    >
+                      {{ talentResult.canInvite.disable ? '不可邀约' : '可邀约' }}
+                    </v-chip>
+                  </div>
+                  <v-btn
+                    v-if="!talentResult.canInvite.disable"
+                    color="primary"
+                    variant="flat"
+                    @click="openInviteDialog"
+                  >
+                    发起邀约
+                  </v-btn>
+                </div>
+                <div v-if="talentResult.invoiceAbilityTips" class="text-caption text-warning mt-2">
+                  <v-icon size="14" color="warning">mdi-alert-circle</v-icon>
+                  {{ talentResult.invoiceAbilityTips }}
+                </div>
+              </v-card>
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <!-- 邀约弹窗 -->
+        <v-dialog v-model="inviteDialog" max-width="480">
+          <v-card>
+            <v-card-title class="text-h6 font-weight-bold">发起邀约</v-card-title>
+            <v-card-text>
+              <v-select
+                v-model="inviteForm.cooperationType"
+                :items="cooperationTypeOptions"
+                label="合作类型"
+                variant="outlined"
+                density="compact"
+                class="mb-3"
+              />
+              <v-text-field
+                v-model.number="inviteForm.accounting"
+                label="分成比例 (%)"
+                type="number"
+                variant="outlined"
+                density="compact"
+                class="mb-3"
+              />
+              <v-text-field
+                v-model="inviteForm.phoneNum"
+                label="绑定手机号"
+                variant="outlined"
+                density="compact"
+                class="mb-3"
+              />
+              <v-row dense class="mb-3">
+                <v-col cols="8">
+                  <v-text-field
+                    v-model="inviteForm.verifyCode"
+                    label="验证码"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="4">
+                  <v-btn
+                    block
+                    height="40"
+                    :disabled="verifyCountdown > 0"
+                    :loading="verifyLoading"
+                    @click="sendVerifyCode"
+                  >
+                    {{ verifyCountdown > 0 ? `${verifyCountdown}s` : '发送验证码' }}
+                  </v-btn>
+                </v-col>
+              </v-row>
+              <v-text-field
+                v-model="inviteForm.validEndTime"
+                label="有效期至"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn variant="text" @click="inviteDialog = false">取消</v-btn>
+              <v-btn color="primary" :loading="inviteLoading" @click="submitInvite">确认邀约</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <!-- 软电话 -->
         <v-card v-if="selectedAccount" variant="outlined" class="mt-4 pa-4">
           <v-card-title class="text-h6 font-weight-bold mb-2 d-flex align-center justify-space-between">
@@ -262,7 +392,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
-import { fetchUnsettledBills, getOutcallLoginInfo } from '@/api/kuaixiaodian'
+import { fetchUnsettledBills, getOutcallLoginInfo, searchUser, inviteUser, verifyInvitation } from '@/api/kuaixiaodian'
 import { createClinkAgent, EVENT_TYPE, RESPONSE_TYPE, type TokenMessage } from '@/lib/clink-agent'
 
 interface AccountInfo {
@@ -542,6 +672,163 @@ function unpauseAgent() {
   if (!softPhoneClient) return
   softPhoneClient.unpause()
   addSoftPhoneLog('置闲')
+}
+
+/* ---------- 主播邀约 ---------- */
+
+const talentSearchKw = ref('')
+const talentLoading = ref(false)
+const talentResult = ref<any>(null)
+
+const inviteDialog = ref(false)
+const inviteLoading = ref(false)
+const verifyLoading = ref(false)
+const verifyCountdown = ref(0)
+let verifyTimer: any = null
+
+const inviteForm = ref({
+  bindModel: 0,
+  memberId: 0,
+  validEndTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  phoneNum: '',
+  verifyCode: '',
+  accounting: 50,
+  cooperationType: 1,
+})
+
+const cooperationTypeOptions = [
+  { title: '普通合作', value: 1 },
+  { title: '独家合作', value: 2 },
+]
+
+async function searchTalent() {
+  if (!selectedAccount.value || !talentSearchKw.value.trim()) return
+  talentLoading.value = true
+  errorMsg.value = null
+  try {
+    const res: any = await searchUser(
+      { userName: talentSearchKw.value.trim(), type: 2 },
+      {
+        userId: String(selectedAccount.value.userId),
+        'kuaishou.shop.b_st': selectedAccount.value.apiSt,
+      },
+    )
+    if (res.data.result === 109) {
+      throw new Error('SESSION_EXPIRED')
+    }
+    if (res.data.result === 1 && res.data.data?.length > 0) {
+      talentResult.value = res.data.data[0]
+    } else {
+      talentResult.value = null
+      errorMsg.value = '未查询到该主播'
+    }
+  } catch (err: any) {
+    if (err.message === 'SESSION_EXPIRED') {
+      const acc = selectedAccount.value
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      accountInfo.value = null
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+    errorMsg.value = err.message || '查询失败'
+  } finally {
+    talentLoading.value = false
+  }
+}
+
+function openInviteDialog() {
+  if (!talentResult.value) return
+  inviteForm.value.memberId = talentResult.value.userInfo.userId
+  inviteDialog.value = true
+}
+
+async function sendVerifyCode() {
+  if (!selectedAccount.value || !inviteForm.value.phoneNum) return
+  verifyLoading.value = true
+  try {
+    const res: any = await verifyInvitation(
+      {
+        memberId: inviteForm.value.memberId,
+        phoneNum: inviteForm.value.phoneNum,
+      },
+      {
+        userId: String(selectedAccount.value.userId),
+        'kuaishou.shop.b_st': selectedAccount.value.apiSt,
+      },
+    )
+    if (res.data.result === 109) {
+      throw new Error('SESSION_EXPIRED')
+    }
+    if (res.data.result === 1) {
+      verifyCountdown.value = 60
+      verifyTimer = setInterval(() => {
+        verifyCountdown.value--
+        if (verifyCountdown.value <= 0) {
+          clearInterval(verifyTimer)
+        }
+      }, 1000)
+    } else {
+      errorMsg.value = res.data.errorMsg || '发送失败'
+    }
+  } catch (err: any) {
+    if (err.message === 'SESSION_EXPIRED') {
+      const acc = selectedAccount.value!
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      accountInfo.value = null
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+    errorMsg.value = err.message || '发送失败'
+  } finally {
+    verifyLoading.value = false
+  }
+}
+
+async function submitInvite() {
+  if (!selectedAccount.value) return
+  inviteLoading.value = true
+  try {
+    const body = {
+      ...inviteForm.value,
+      validEndTime: new Date(inviteForm.value.validEndTime).getTime(),
+    }
+    const res: any = await inviteUser(body, {
+      userId: String(selectedAccount.value.userId),
+      'kuaishou.shop.b_st': selectedAccount.value.apiSt,
+    })
+    if (res.data.result === 109) {
+      throw new Error('SESSION_EXPIRED')
+    }
+    if (res.data.result === 1) {
+      inviteDialog.value = false
+      errorMsg.value = null
+    } else {
+      errorMsg.value = res.data.errorMsg || '邀约失败'
+    }
+  } catch (err: any) {
+    if (err.message === 'SESSION_EXPIRED') {
+      const acc = selectedAccount.value!
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      accountInfo.value = null
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+    errorMsg.value = err.message || '邀约失败'
+  } finally {
+    inviteLoading.value = false
+  }
 }
 
 /* ---------- 原有方法 ---------- */

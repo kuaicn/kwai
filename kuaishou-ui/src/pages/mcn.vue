@@ -18,8 +18,6 @@
             return-object
             clearable
           />
-
-
         </v-card>
 
         <v-alert
@@ -110,6 +108,52 @@
             </v-card>
           </v-card-text>
         </v-card>
+
+        <!-- 预计结算日历 -->
+        <v-card v-if="selectedAccount" variant="outlined" class="mt-4 pa-4">
+          <v-card-title class="text-h6 font-weight-bold mb-2 d-flex align-center justify-space-between flex-wrap">
+            <span>预计结算日历</span>
+            <div class="d-flex align-center gap-2">
+              <v-btn icon="mdi-chevron-left" variant="text" density="compact" @click="prevMonth" />
+              <span class="text-body-1 font-weight-medium">{{ calendarYear }}年{{ calendarMonth + 1 }}月</span>
+              <v-btn icon="mdi-chevron-right" variant="text" density="compact" @click="nextMonth" />
+            </div>
+          </v-card-title>
+
+          <v-card-text>
+            <v-progress-linear v-if="loadingCalendar" indeterminate class="mb-2" />
+
+            <!-- 星期标题 -->
+            <div class="calendar-grid mb-1">
+              <div
+                v-for="d in weekdays"
+                :key="d"
+                class="text-caption text-center font-weight-medium text-medium-emphasis py-1"
+              >
+                {{ d }}
+              </div>
+            </div>
+
+            <!-- 日期网格 -->
+            <div class="calendar-grid">
+              <div
+                v-for="(day, idx) in calendarDays"
+                :key="idx"
+                class="calendar-day pa-1"
+                :class="{ 'has-data': day.data }"
+              >
+                <template v-if="day.date > 0">
+                  <div class="text-caption font-weight-medium text-right">{{ day.date }}</div>
+                  <div v-if="day.data" class="mt-1">
+                    <div class="text-caption text-success">结{{ day.data.settlement.toFixed(2) }}</div>
+                    <div class="text-caption text-primary">收{{ day.data.income.toFixed(2) }}</div>
+                    <div class="text-caption text-error">支{{ day.data.outgoing.toFixed(2) }}</div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
   </v-container>
@@ -119,6 +163,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getAccounts, deleteAccount, type Account } from '@/composables/useAccountDB'
 import { proxy } from '@/api/proxy'
+import { fetchUnsettledBills } from '@/api/kuaixiaodian'
 
 interface AccountInfo {
   existAccount: boolean
@@ -136,10 +181,23 @@ interface AccountInfo {
   espLogo: string
 }
 
+interface DayData {
+  date: string
+  settlement: number
+  income: number
+  outgoing: number
+}
+
 const accounts = ref<Account[]>([])
 const selectedAccount = ref<Account | null>(null)
 const accountInfo = ref<AccountInfo | null>(null)
 const errorMsg = ref<string | null>(null)
+
+const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+const calendarYear = ref(new Date().getFullYear())
+const calendarMonth = ref(new Date().getMonth())
+const dayDataMap = ref<Map<string, DayData>>(new Map())
+const loadingCalendar = ref(false)
 
 const accountOptions = computed(() => {
   return accounts.value
@@ -149,6 +207,28 @@ const accountOptions = computed(() => {
       label: `${a.userName} (${a.userId})`,
       ...a,
     }))
+})
+
+const calendarDays = computed(() => {
+  const year = calendarYear.value
+  const month = calendarMonth.value
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const daysInMonth = lastDay.getDate()
+  const startWeekday = firstDay.getDay()
+
+  const days: { date: number; fullDate: string; data?: DayData }[] = []
+
+  for (let i = 0; i < startWeekday; i++) {
+    days.push({ date: 0, fullDate: '' })
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    days.push({ date: d, fullDate, data: dayDataMap.value.get(fullDate) })
+  }
+
+  return days
 })
 
 async function loadAccounts() {
@@ -197,12 +277,86 @@ async function fetchAccountInfo() {
   }
 }
 
+async function loadCalendarData() {
+  if (!selectedAccount.value) return
+  loadingCalendar.value = true
+
+  const year = calendarYear.value
+  const month = calendarMonth.value
+  const start = new Date(year, month, 1).getTime()
+  const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime()
+
+  try {
+    const records = await fetchUnsettledBills(
+      {
+        userId: String(selectedAccount.value.userId),
+        'kuaishou.shop.b_st': selectedAccount.value.apiSt,
+      },
+      start,
+      end,
+    )
+
+    const map = new Map<string, DayData>()
+    for (const r of records) {
+      const date = new Date(r.orderCreateTime)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      if (!map.has(key)) {
+        map.set(key, { date: key, settlement: 0, income: 0, outgoing: 0 })
+      }
+      const d = map.get(key)!
+      d.settlement += parseFloat(r.settlementAmount || '0')
+      d.income += parseFloat(r.totalIncomeAmount || '0')
+      d.outgoing += parseFloat(r.totalOutgoingAmount || '0')
+    }
+    dayDataMap.value = map
+  } catch (err: any) {
+    if (err.message === 'SESSION_EXPIRED') {
+      const acc = selectedAccount.value
+      if (acc.id !== undefined) {
+        await deleteAccount(acc.id)
+        await loadAccounts()
+      }
+      selectedAccount.value = null
+      accountInfo.value = null
+      errorMsg.value = `账户 ${acc.userName}（${acc.userId}）已失效，已自动移除`
+      return
+    }
+    errorMsg.value = err.message || '加载账单数据失败'
+  } finally {
+    loadingCalendar.value = false
+  }
+}
+
+function prevMonth() {
+  if (calendarMonth.value === 0) {
+    calendarMonth.value = 11
+    calendarYear.value--
+  } else {
+    calendarMonth.value--
+  }
+  loadCalendarData()
+}
+
+function nextMonth() {
+  if (calendarMonth.value === 11) {
+    calendarMonth.value = 0
+    calendarYear.value++
+  } else {
+    calendarMonth.value++
+  }
+  loadCalendarData()
+}
+
 watch(selectedAccount, (val) => {
   if (val) {
     fetchAccountInfo()
+    calendarYear.value = new Date().getFullYear()
+    calendarMonth.value = new Date().getMonth()
+    loadCalendarData()
   } else {
     accountInfo.value = null
     errorMsg.value = null
+    dayDataMap.value = new Map()
   }
 })
 
@@ -210,3 +364,22 @@ onMounted(() => {
   loadAccounts()
 })
 </script>
+
+<style scoped>
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  min-height: 80px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  transition: background 0.2s;
+}
+
+.calendar-day.has-data {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+</style>

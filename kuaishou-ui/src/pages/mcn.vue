@@ -440,8 +440,13 @@ async function loginSoftPhone() {
       { debug: true, sipPhone: false, connectInterval: 1000 },
       () => {
         softPhoneClient.login({
+          identifier: loginInfo.identifier,
           cno: loginInfo.agentId,
           password: loginInfo.password,
+          loginStatus: 2,
+          bindType: 3,
+          bindTel: loginInfo.phoneNumber,
+          pauseDescription: '忙碌',
         })
       },
     )

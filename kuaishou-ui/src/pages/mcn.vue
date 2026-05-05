@@ -252,7 +252,6 @@
                 </div>
                 <div v-if="softPhoneLogs.length === 0" class="text-caption text-grey">暂无日志</div>
               </div>
-            </div>
           </v-card-text>
         </v-card>
       </v-col>

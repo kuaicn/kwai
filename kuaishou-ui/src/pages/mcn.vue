@@ -437,7 +437,7 @@ async function loginSoftPhone() {
     })
 
     softPhoneClient.setup(
-      { debug: true, sipPhone: false, connectInterval: 1000 },
+      { debug: true, sipPhone: true, connectInterval: 1000 },
       () => {
         softPhoneClient.login({
           identifier: loginInfo.identifier,

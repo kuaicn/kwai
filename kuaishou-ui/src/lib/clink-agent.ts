@@ -751,7 +751,9 @@ const Util = {
     if (i === urls.length) {
       logger.debug('Util.loadScript: JS file is loaded [' + JSON.stringify(urls) + ']');
       if (typeof GLOBAL.callback === 'function') {
-        GLOBAL.callback();
+        const cb = GLOBAL.callback;
+        GLOBAL.callback = undefined;
+        cb();
       } else if (typeof callback === 'function') {
         callback();
       }

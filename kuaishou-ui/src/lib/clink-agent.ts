@@ -2174,13 +2174,12 @@ const ClinkClient = {
     Util.ajax({
       type: 'GET',
       url: GLOBAL.webSocketUrl + '/login',
-      dataType: 'jsonp',
+      dataType: 'json',
       data: {
         identifier: params.identifier,
         cno: params.cno,
         password: encodeURIComponent(params.password || ''),
       },
-      jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
           const onlineParams: OnlineParams = {
@@ -2240,13 +2239,12 @@ const ClinkClient = {
     Util.ajax({
       type: 'GET',
       url: GLOBAL.webSocketUrl + '/safeLogin',
-      dataType: 'jsonp',
+      dataType: 'json',
       data: {
         identifier: params.identifier,
         cno: params.cno,
         password: encodeURIComponent(params.password || ''),
       },
-      jsonp: 'callback',
       success: function (result: any) {
         if (result.code === 0) {
           const onlineParams: OnlineParams = {

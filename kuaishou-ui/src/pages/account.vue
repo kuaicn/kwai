@@ -47,6 +47,74 @@
           </div>
         </v-card>
 
+        <!-- Cookie 导入 -->
+        <v-card class="mb-6 pa-6" variant="outlined">
+          <v-card-title class="text-h6 font-weight-bold mb-4">
+            Cookie 导入
+          </v-card-title>
+
+          <v-select
+            v-model="cookieImportSid"
+            :items="sidOptions"
+            item-title="label"
+            item-value="value"
+            label="选择账号类型"
+            variant="outlined"
+            class="mb-4"
+          />
+
+          <v-textarea
+            v-model="cookieString"
+            label="粘贴 Cookie 字符串"
+            placeholder="_did=...; userId=...; kuaishou.shop.b_st=..."
+            variant="outlined"
+            rows="4"
+            class="mb-4"
+            @blur="parseCookie"
+          />
+
+          <v-alert
+            v-if="parsedCookie"
+            type="info"
+            variant="tonal"
+            class="mb-4"
+            density="compact"
+          >
+            <div class="text-caption">
+              <div>userId: {{ parsedCookie.userId || '未识别' }}</div>
+              <div>apiSt: {{ parsedCookie.apiSt ? '已识别' : '未识别' }}</div>
+              <div>apiAt: {{ parsedCookie.apiAt ? '已识别' : '未识别' }}</div>
+            </div>
+          </v-alert>
+
+          <v-text-field
+            v-model="cookieImportName"
+            label="用户名称（可选）"
+            placeholder="留空默认使用 userId"
+            variant="outlined"
+            class="mb-4"
+          />
+
+          <v-btn
+            :disabled="!canImport"
+            color="primary"
+            block
+            @click="importFromCookie"
+          >
+            保存账户
+          </v-btn>
+
+          <v-alert
+            v-if="importStatus"
+            :type="importStatus.type"
+            :text="importStatus.text"
+            class="mt-4"
+            closable
+            density="compact"
+            @click:close="importStatus = null"
+          />
+        </v-card>
+
         <!-- 已保存账户列表 -->
         <v-card variant="outlined">
           <v-card-title class="text-h6 font-weight-bold d-flex align-center">
@@ -139,6 +207,16 @@ const qrImageData = ref('')
 const accountList = ref<Account[]>([])
 const confirmClear = ref(false)
 
+const cookieImportSid = ref('kuaishou.shop.b')
+const cookieString = ref('')
+const cookieImportName = ref('')
+const parsedCookie = ref<{ userId: number; apiSt: string; apiAt: string } | null>(null)
+const importStatus = ref<ScanStatus | null>(null)
+
+const canImport = computed(() => {
+  return parsedCookie.value !== null && parsedCookie.value.userId > 0 && parsedCookie.value.apiSt.length > 0
+})
+
 const groupedAccounts = computed(() => {
   const groups: Record<string, Account[]> = {}
   for (const acc of accountList.value) {
@@ -217,6 +295,57 @@ async function startScan() {
 async function removeAccount(id: number) {
   await deleteAccount(id)
   await loadAccounts()
+}
+
+function parseCookieString(str: string): Record<string, string> {
+  const cookies: Record<string, string> = {}
+  str.split(';').forEach(part => {
+    const idx = part.indexOf('=')
+    if (idx === -1) return
+    const key = part.slice(0, idx).trim()
+    const val = part.slice(idx + 1).trim()
+    cookies[key] = val
+  })
+  return cookies
+}
+
+function parseCookie() {
+  parsedCookie.value = null
+  if (!cookieString.value.trim()) return
+
+  const cookies = parseCookieString(cookieString.value)
+  const sid = cookieImportSid.value
+
+  const userId = Number(cookies['userId']) || 0
+  const apiSt = cookies[`${sid}_st`] || ''
+  const apiAt = cookies[`${sid}.at`] || cookies[`${sid}_at`] || ''
+
+  if (userId > 0 && apiSt) {
+    parsedCookie.value = { userId, apiSt, apiAt }
+  }
+}
+
+async function importFromCookie() {
+  if (!parsedCookie.value) return
+  importStatus.value = null
+
+  try {
+    await addAccount({
+      sid: cookieImportSid.value,
+      userId: parsedCookie.value.userId,
+      userName: cookieImportName.value.trim() || String(parsedCookie.value.userId),
+      headurl: '',
+      apiSt: parsedCookie.value.apiSt,
+      apiAt: parsedCookie.value.apiAt || undefined,
+    })
+    await loadAccounts()
+    importStatus.value = { type: 'success', text: '导入成功' }
+    cookieString.value = ''
+    cookieImportName.value = ''
+    parsedCookie.value = null
+  } catch (err: any) {
+    importStatus.value = { type: 'error', text: err.message || '导入失败' }
+  }
 }
 
 async function clearAll() {

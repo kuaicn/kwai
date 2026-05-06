@@ -9,10 +9,10 @@ export interface Account {
   userName: string
   headurl: string
   apiSt: string
-  apiAt: string
-  bUserId: number
-  ssecurity: string
-  passToken: string
+  apiAt?: string
+  bUserId?: number
+  ssecurity?: string
+  passToken?: string
   createdAt: number
 }
 

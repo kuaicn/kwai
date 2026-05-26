@@ -132,18 +132,21 @@ export async function fetchUnsettledBills(
   }
 
   const totalPages = Math.ceil(total / limit)
-  const remainingPages: Promise<any>[] = []
-  for (let p = 2; p <= totalPages; p++) {
-    remainingPages.push(fetchPage(p))
-  }
-
-  const results = await Promise.all(remainingPages)
-
   const allRecords = [...firstRecords]
-  for (const res of results) {
-    if (res.data.result !== 1) continue
-    const records = res.data.data?.record || []
-    allRecords.push(...records)
+  const concurrency = 3
+
+  for (let start = 2; start <= totalPages; start += concurrency) {
+    const end = Math.min(start + concurrency - 1, totalPages)
+    const batch: Promise<any>[] = []
+    for (let p = start; p <= end; p++) {
+      batch.push(fetchPage(p))
+    }
+    const results = await Promise.all(batch)
+    for (const res of results) {
+      if (res.data.result !== 1) continue
+      const records = res.data.data?.record || []
+      allRecords.push(...records)
+    }
   }
 
   return allRecords

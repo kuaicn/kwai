@@ -117,6 +117,7 @@
               <v-btn icon="mdi-chevron-left" variant="text" density="compact" @click="prevMonth" />
               <span class="text-body-1 font-weight-medium">{{ calendarYear }}年{{ calendarMonth + 1 }}月</span>
               <v-btn icon="mdi-chevron-right" variant="text" density="compact" @click="nextMonth" />
+              <v-btn icon="mdi-refresh" variant="text" density="compact" :loading="loadingCalendar" @click="loadCalendarData" />
             </div>
           </v-card-title>
 

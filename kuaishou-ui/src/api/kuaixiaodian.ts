@@ -90,21 +90,21 @@ export async function fetchUnsettledBills(
   createTimeGte: number,
   createTimeLte: number,
 ): Promise<any[]> {
-  const allRecords: any[] = []
-  let page = 1
   const limit = 100
 
-  while (true) {
-    const query = new URLSearchParams({
+  function buildQuery(page: number) {
+    return new URLSearchParams({
       role: 'MCN',
       limit: String(limit),
       page: String(page),
       createTimeGte: String(createTimeGte),
       createTimeLte: String(createTimeLte),
     })
+  }
 
-    const res: any = await proxy.get(
-      `${BASE_URL}/rest/app/tts/business/api/funds/financial/bill/unsettle/list?${query.toString()}`,
+  function fetchPage(page: number) {
+    return proxy.get(
+      `${BASE_URL}/rest/app/tts/business/api/funds/financial/bill/unsettle/list?${buildQuery(page).toString()}`,
       {
         originalHeaders: {
           Cookie: buildCookieHeader(cookies),
@@ -112,19 +112,38 @@ export async function fetchUnsettledBills(
         proxyOptions: defaultProxyOptions(),
       },
     )
+  }
 
-    if (res.data.result === 109) {
-      throw new Error('SESSION_EXPIRED')
-    }
+  const firstRes: any = await fetchPage(1)
 
-    if (res.data.result !== 1) break
+  if (firstRes.data.result === 109) {
+    throw new Error('SESSION_EXPIRED')
+  }
 
+  if (firstRes.data.result !== 1) {
+    return []
+  }
+
+  const firstRecords: any[] = firstRes.data.data?.record || []
+  const total: number = firstRes.data.data?.total || 0
+
+  if (total === 0 || firstRecords.length >= total) {
+    return firstRecords
+  }
+
+  const totalPages = Math.ceil(total / limit)
+  const remainingPages: Promise<any>[] = []
+  for (let p = 2; p <= totalPages; p++) {
+    remainingPages.push(fetchPage(p))
+  }
+
+  const results = await Promise.all(remainingPages)
+
+  const allRecords = [...firstRecords]
+  for (const res of results) {
+    if (res.data.result !== 1) continue
     const records = res.data.data?.record || []
     allRecords.push(...records)
-
-    const total = res.data.data?.total || 0
-    if (allRecords.length >= total || records.length < limit) break
-    page++
   }
 
   return allRecords

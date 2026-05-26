@@ -152,6 +152,28 @@
                 </template>
               </div>
             </div>
+            <v-divider class="my-4" />
+
+            <div class="d-flex justify-space-around text-center flex-wrap">
+              <div>
+                <div class="text-caption text-medium-emphasis">月结算总额</div>
+                <div class="text-h6 font-weight-bold text-success">
+                  {{ monthTotals.settlement.toFixed(2) }}
+                </div>
+              </div>
+              <div>
+                <div class="text-caption text-medium-emphasis">月收入总额</div>
+                <div class="text-h6 font-weight-bold text-primary">
+                  {{ monthTotals.income.toFixed(2) }}
+                </div>
+              </div>
+              <div>
+                <div class="text-caption text-medium-emphasis">月支出总额</div>
+                <div class="text-h6 font-weight-bold text-error">
+                  {{ monthTotals.outgoing.toFixed(2) }}
+                </div>
+              </div>
+            </div>
           </v-card-text>
         </v-card>
 
@@ -442,6 +464,18 @@ const accountOptions = computed(() => {
       label: `${a.userName} (${a.userId})`,
       ...a,
     }))
+})
+
+const monthTotals = computed(() => {
+  let settlement = 0
+  let income = 0
+  let outgoing = 0
+  for (const d of dayDataMap.value.values()) {
+    settlement += d.settlement
+    income += d.income
+    outgoing += d.outgoing
+  }
+  return { settlement, income, outgoing }
 })
 
 const calendarDays = computed(() => {
